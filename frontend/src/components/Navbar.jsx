@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useLocation, Link } from 'react-router-dom';
-import { Bell, Search, Menu, Settings, User } from 'lucide-react';
+import { Bell, Search, Menu, Settings } from 'lucide-react';
 
 export default function Navbar({ onMenuClick }) {
   const { user } = useAuth();

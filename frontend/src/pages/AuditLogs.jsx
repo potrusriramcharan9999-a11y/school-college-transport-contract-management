@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
-import { ShieldAlert, Database, HelpCircle } from 'lucide-react';
+import { ShieldAlert, Database } from 'lucide-react';
 
 export default function AuditLogs() {
   const { user } = useAuth();
@@ -16,8 +16,6 @@ export default function AuditLogs() {
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
-      setError('You must be an administrator to view audit logs.');
-      setLoading(false);
       return;
     }
 
