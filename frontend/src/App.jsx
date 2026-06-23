@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 
 const Login = lazy(() => import('./pages/Login'));
+const ViewerLogin = lazy(() => import('./pages/ViewerLogin'));
 const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Institutions = lazy(() => import('./pages/Institutions'));
@@ -25,6 +26,7 @@ export default function App() {
     <Suspense fallback={<LoadingSpinner message="Loading page..." />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/viewer-login" element={<ViewerLogin />} />
         <Route path="/register" element={<Register />} />
         <Route
           path="/"

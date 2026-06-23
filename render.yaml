@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: transport-api
+    name: transport-contract
     runtime: node
     plan: free
     buildCommand: cd backend && npm ci

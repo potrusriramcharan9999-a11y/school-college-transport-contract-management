@@ -28,10 +28,24 @@ async function updateLastLogin(id) {
   await query("UPDATE users SET last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
 }
 
+async function updateRoleAndName(id, { role, full_name }) {
+  const result = await query(
+    `UPDATE users
+     SET role = $2,
+         full_name = COALESCE($3, full_name),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1
+     RETURNING id, full_name, email, role, is_active, last_login, created_at`,
+    [id, role, full_name || null]
+  );
+
+  return result.rows[0] || null;
+}
+
 module.exports = {
   create,
   findByEmail,
   findById,
-  updateLastLogin
+  updateLastLogin,
+  updateRoleAndName
 };
-

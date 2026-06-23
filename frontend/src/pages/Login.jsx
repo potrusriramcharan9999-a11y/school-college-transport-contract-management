@@ -1,11 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import { Bus } from 'lucide-react';
-import { isGoogleAuthConfigured, renderGoogleButton } from '../lib/googleIdentity';
+
+const fixedLoginOptions = [
+  {
+    label: 'Admin',
+    email: 'admin@transport-contract.local',
+    password: 'Admin@2026',
+  },
+  {
+    label: 'Staff',
+    email: 'staff@transport-contract.local',
+    password: 'Staff@2026',
+  },
+];
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,57 +25,34 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { user, login, googleLogin } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
-  const googleButtonRef = useRef(null);
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
 
-  const handleGoogleCallback = useCallback(async (response) => {
+  const signInWithCredentials = async (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
     setError('');
     setSubmitting(true);
+
     try {
-      if (!response.credential) {
-        throw new Error('Google did not return a credential token.');
-      }
-      await googleLogin(response.credential);
+      await login(account.email, account.password);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Google Sign-In failed. Please try again.');
+      setError(err.response?.data?.message || `${account.label} login failed. Please try again.`);
     } finally {
       setSubmitting(false);
     }
-  }, [googleLogin, navigate]);
-
-  useEffect(() => {
-    if (!isGoogleAuthConfigured) return;
-
-    let isMounted = true;
-
-    renderGoogleButton({
-      element: googleButtonRef.current,
-      callback: (response) => {
-        if (isMounted) handleGoogleCallback(response);
-      },
-      text: 'signin_with',
-    }).catch((err) => {
-      if (isMounted) {
-        console.error('Failed to initialize Google Sign-In:', err);
-        setError('Google Sign-In could not be loaded. Please refresh and try again.');
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [handleGoogleCallback]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
+
     try {
       await login(email, password);
       navigate('/', { replace: true });
@@ -76,44 +65,54 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#080B14] px-4 text-white animate-fade-in relative overflow-hidden">
-      {/* Background ambient lighting glows */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#8B7CFF]/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#A78BFA]/5 rounded-full blur-3xl" />
 
-      <Card className="w-full max-w-sm p-8 bg-[#121827]/70 border border-white/5 shadow-2xl backdrop-blur-md relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8">
+      <Card className="w-full max-w-md p-8 bg-[#121827]/70 border border-white/5 shadow-2xl backdrop-blur-md relative z-10">
+        <div className="text-center mb-7">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-3xl bg-gradient-to-tr from-[#8B7CFF] to-[#A78BFA] text-white text-xl font-bold mb-4 shadow-lg shadow-[#8B7CFF]/20">
             <Bus className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-black text-white tracking-tight">
-            Transport Management
-          </h1>
+          <h1 className="text-xl font-black text-white tracking-tight">Admin & Staff Login</h1>
           <p className="mt-1.5 text-xs text-[#94A3B8] font-bold uppercase tracking-wider">
-            Sign in to your workspace
+            Fixed workspace credentials
           </p>
         </div>
 
-        {/* Error message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl animate-fade-in flex items-start gap-2">
+          <div className="mb-5 p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl animate-fade-in flex items-start gap-2">
             <span>!</span>
             <span>{error}</span>
           </div>
         )}
 
-        {/* Login form */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          {fixedLoginOptions.map((account) => (
+            <button
+              key={account.email}
+              type="button"
+              onClick={() => signInWithCredentials(account)}
+              disabled={submitting}
+              className="min-h-[88px] rounded-2xl border border-white/10 bg-[#0D1220] px-3 py-3 text-left hover:border-[#8B7CFF]/50 hover:bg-white/5 transition-all disabled:opacity-40 cursor-pointer"
+            >
+              <span className="block text-sm font-black text-white">{account.label}</span>
+              <span className="block mt-1 text-[10px] font-bold text-[#A78BFA] break-all">{account.email}</span>
+              <span className="block mt-1 text-[10px] font-semibold text-[#94A3B8]">{account.password}</span>
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <Input
             id="email"
             name="transport-login-email"
-            label="Email Address"
+            label="Admin / Staff Email"
             type="email"
             autoComplete="off"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@company.com"
+            placeholder="admin@transport-contract.local"
           />
 
           <div>
@@ -141,42 +140,23 @@ export default function Login() {
             />
           </div>
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-2.5 mt-4"
-            disabled={submitting}
-          >
+          <Button type="submit" variant="primary" className="w-full py-2.5 mt-4" disabled={submitting}>
             {submitting ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
 
-        <div className="my-5 flex items-center justify-between">
-          <span className="w-1/5 border-b border-white/10" />
-          <span className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8]">or continue with</span>
-          <span className="w-1/5 border-b border-white/10" />
-        </div>
-
-        {isGoogleAuthConfigured ? (
-          <div className="flex justify-center w-full">
-            <div ref={googleButtonRef} id="google-signin-btn" className="w-full flex justify-center min-h-10" />
-          </div>
-        ) : (
-          <div className="flex justify-center w-full">
-            <button
-              type="button"
-              disabled
-              className="w-full py-2.5 bg-[#121827] border border-white/10 text-[#94A3B8] text-xs font-bold rounded-2xl opacity-60 flex items-center justify-center gap-2"
-            >
-              Google Sign-In unavailable
-            </button>
-          </div>
-        )}
-
-        <div className="mt-6 text-center text-xs text-[#94A3B8] font-medium">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-bold text-[#8B7CFF] hover:text-[#A78BFA] transition-colors hover:underline">
-            Create an Account
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-center text-xs font-bold">
+          <Link
+            to="/viewer-login"
+            className="rounded-2xl border border-white/10 bg-[#0D1220] px-4 py-3 text-[#A78BFA] hover:bg-white/5 transition-colors"
+          >
+            Viewer Google Login
+          </Link>
+          <Link
+            to="/register"
+            className="rounded-2xl border border-white/10 bg-[#0D1220] px-4 py-3 text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors"
+          >
+            Create Viewer Account
           </Link>
         </div>
       </Card>
