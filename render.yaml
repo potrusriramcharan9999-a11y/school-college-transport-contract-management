@@ -15,7 +15,7 @@ services:
       - key: JWT_EXPIRES_IN
         value: 1d
       - key: CORS_ORIGIN
-        value: https://transport-contract.vercel.app
+        value: https://frontend-zeta-woad-10.vercel.app
       - key: ENABLE_CRON
         value: "true"
       - key: GOOGLE_CLIENT_ID
