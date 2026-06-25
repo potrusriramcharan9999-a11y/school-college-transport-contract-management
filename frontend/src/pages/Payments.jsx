@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -9,7 +8,10 @@ import Table from '../components/ui/Table';
 import Input from '../components/ui/Input';
 import StatCard from '../components/ui/StatCard';
 import { canManage } from '../lib/permissions';
-import { FileText, CheckCircle2, Clock, AlertTriangle, Search } from 'lucide-react';
+import {
+  FileText, CheckCircle2, Clock, AlertTriangle,
+  Search, Plus, X, IndianRupee, CalendarDays
+} from 'lucide-react';
 
 const STATUS_OPTIONS = ['All', 'Unpaid', 'Paid', 'Overdue'];
 const STATUS_MAP = {
@@ -32,6 +34,190 @@ const formatCurrency = (value) => {
   return '₹' + Number(value).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
+// ─── Create Payment Modal ───────────────────────────────────────────────────
+function CreatePaymentModal({ onClose, onCreated }) {
+  const [contracts, setContracts] = useState([]);
+  const [loadingContracts, setLoadingContracts] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const [form, setForm] = useState({
+    contract_id: '',
+    invoice_number: '',
+    billing_period_start: '',
+    billing_period_end: '',
+    amount: '',
+    due_date: '',
+    remarks: '',
+  });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/contracts', { params: { limit: 200 } });
+        const body = res.data.data || res.data;
+        const items = body.items || body.contracts || body || [];
+        setContracts(Array.isArray(items) ? items : []);
+      } catch {
+        setContracts([]);
+      } finally {
+        setLoadingContracts(false);
+      }
+    })();
+  }, []);
+
+  const handleChange = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      await api.post('/payments', {
+        ...form,
+        amount: Number(form.amount),
+      });
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+      <Card className="w-full max-w-lg p-0 bg-[#121827] border border-white/10 shadow-2xl relative overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#8B7CFF] to-[#A78BFA] flex items-center justify-center shadow-lg shadow-[#8B7CFF]/20">
+              <IndianRupee className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">New Payment</h2>
+              <p className="text-[10px] text-[#94A3B8] font-semibold">Create a new payment entry</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#94A3B8] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {error && (
+            <div className="p-3 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl animate-fade-in">
+              {error}
+            </div>
+          )}
+
+          {/* Contract Selector */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">
+              Contract <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={form.contract_id}
+              onChange={handleChange('contract_id')}
+              className="w-full px-4 py-3 bg-[#0D1220] text-white border border-white/10 rounded-2xl text-sm transition-all duration-200 outline-none focus:border-[#8B7CFF]/60 focus:ring-4 focus:ring-[#8B7CFF]/10 hover:border-white/20 appearance-none cursor-pointer"
+            >
+              <option value="" disabled>
+                {loadingContracts ? 'Loading contracts...' : 'Select a contract'}
+              </option>
+              {contracts.map((c) => (
+                <option key={c.id} value={c.id} className="bg-[#0D1220] text-white">
+                  {c.contract_number} — {c.institution_name || 'No Institution'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Invoice Number */}
+          <Input
+            label="Invoice Number"
+            required
+            value={form.invoice_number}
+            onChange={handleChange('invoice_number')}
+            placeholder="e.g. PAY001"
+          />
+
+          {/* Billing Period */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Billing Start"
+              type="date"
+              required
+              value={form.billing_period_start}
+              onChange={handleChange('billing_period_start')}
+            />
+            <Input
+              label="Billing End"
+              type="date"
+              required
+              value={form.billing_period_end}
+              onChange={handleChange('billing_period_end')}
+            />
+          </div>
+
+          {/* Amount & Due Date */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Amount (₹)"
+              type="number"
+              min="1"
+              required
+              value={form.amount}
+              onChange={handleChange('amount')}
+              placeholder="50000"
+            />
+            <Input
+              label="Due Date"
+              type="date"
+              required
+              value={form.due_date}
+              onChange={handleChange('due_date')}
+            />
+          </div>
+
+          {/* Remarks */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">
+              Remarks
+            </label>
+            <textarea
+              value={form.remarks}
+              onChange={handleChange('remarks')}
+              placeholder="Optional notes..."
+              rows={2}
+              className="w-full px-4 py-3 bg-[#0D1220] text-white border border-white/10 rounded-2xl text-sm transition-all duration-200 outline-none focus:border-[#8B7CFF]/60 focus:ring-4 focus:ring-[#8B7CFF]/10 hover:border-white/20 resize-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Payment'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Payments Page ─────────────────────────────────────────────────────
 export default function Payments() {
   const { user } = useAuth();
   const canUpdatePayments = canManage(user);
@@ -41,6 +227,7 @@ export default function Payments() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [markingId, setMarkingId] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -115,14 +302,33 @@ export default function Payments() {
     },
   ];
 
+  // Map payment_status to user-friendly labels matching the screenshot
+  const statusLabel = (raw) => {
+    const map = { PAID: 'Paid', UNPAID: 'Pending', OVERDUE: 'Overdue' };
+    return map[raw] || raw;
+  };
+
+  const statusVariant = (raw) => {
+    const map = { PAID: 'success', UNPAID: 'warning', OVERDUE: 'danger' };
+    return map[raw] || 'neutral';
+  };
+
   return (
     <div className="space-y-6 text-white animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Payments & Invoicing</h1>
-        <p className="text-xs text-[#94A3B8] mt-1 font-medium">
-          Track school/college transportation subscription invoicing and collection status.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Payments & Invoicing</h1>
+          <p className="text-xs text-[#94A3B8] mt-1 font-medium">
+            Track school/college transportation subscription invoicing and collection status.
+          </p>
+        </div>
+        {canUpdatePayments && (
+          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4" />
+            New Payment
+          </Button>
+        )}
       </div>
 
       {/* Stats Summary Strip */}
@@ -171,13 +377,14 @@ export default function Payments() {
         </div>
       </Card>
 
-      {/* Main Payment Logs */}
+      {/* Error */}
       {error && (
         <div className="p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl animate-fade-in">
           {error}
         </div>
       )}
 
+      {/* Payment Dashboard Table */}
       <div>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3 bg-[#121827]/40 border border-white/5 rounded-3xl">
@@ -192,72 +399,86 @@ export default function Payments() {
             <div className="max-w-sm">
               <h3 className="text-sm font-bold text-white">No transactions found</h3>
               <p className="text-xs text-[#94A3B8] mt-1 leading-normal">
-                There are no transactions matching your search criteria or filter configuration.
+                {canUpdatePayments
+                  ? 'Click "New Payment" to create your first payment entry.'
+                  : 'There are no transactions matching your search criteria or filter configuration.'}
               </p>
             </div>
+            {canUpdatePayments && (
+              <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)} className="mt-2">
+                <Plus className="w-4 h-4" />
+                Create First Payment
+              </Button>
+            )}
           </div>
         ) : (
-          <Table headers={[
-            'Invoice No.',
-            'Contract',
-            'Institution',
-            'Amount',
-            'Due Date',
-            'Status',
-            ...(canUpdatePayments ? ['Actions'] : []),
-          ]}>
-            {payments.map((p) => {
-              const statusVal = p.payment_status || p.status;
-              return (
-                <tr key={p.id} className="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-white">
-                    {p.invoice_number || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-[#8B7CFF] hover:text-[#A78BFA] transition-colors">
-                    {p.Contract?.id ? (
-                      <Link to={`/contracts/${p.Contract.id}`} className="hover:underline">
-                        {p.Contract?.contract_number || p.contract_number || 'View Contract'}
-                      </Link>
-                    ) : (
-                      p.Contract?.contract_number || p.contract_number || '—'
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-[#94A3B8] font-semibold">
-                    {p.Contract?.Institution?.institution_name || p.institution_name || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-white">
-                    {formatCurrency(p.amount)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-[#94A3B8]/80 font-bold">
-                    {formatDate(p.due_date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={statusVal === 'PAID' ? 'success' : statusVal === 'OVERDUE' ? 'danger' : 'warning'}>
-                      {statusVal}
-                    </Badge>
-                  </td>
-                  {canUpdatePayments && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {(statusVal === 'UNPAID' || statusVal === 'OVERDUE') ? (
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => handleMarkPaid(p.id)}
-                          disabled={markingId === p.id}
-                        >
-                          {markingId === p.id ? 'Saving...' : 'Mark Paid'}
-                        </Button>
-                      ) : (
-                        <span className="text-[#94A3B8]/30 text-xs font-semibold">-</span>
-                      )}
+          <div>
+            {/* Dashboard Table Header */}
+            <div className="mb-3 flex items-center gap-3">
+              <CalendarDays className="w-5 h-5 text-[#8B7CFF]" />
+              <h2 className="text-lg font-bold text-white tracking-tight">Payment Dashboard Table</h2>
+            </div>
+
+            <Table headers={[
+              'Payment ID',
+              'Institution',
+              'Amount',
+              'Due Date',
+              'Status',
+              ...(canUpdatePayments ? ['Actions'] : []),
+            ]}>
+              {payments.map((p) => {
+                const statusVal = p.payment_status || p.status;
+                return (
+                  <tr key={p.id} className="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-white">
+                      {p.invoice_number || '—'}
                     </td>
-                  )}
-                </tr>
-              );
-            })}
-          </Table>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-[#94A3B8]">
+                      {p.institution_name || p.Contract?.Institution?.institution_name || '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-white">
+                      {formatCurrency(p.amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-[#94A3B8]/80 font-bold">
+                      {formatDate(p.due_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant={statusVariant(statusVal)}>
+                        {statusLabel(statusVal)}
+                      </Badge>
+                    </td>
+                    {canUpdatePayments && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(statusVal === 'UNPAID' || statusVal === 'OVERDUE') ? (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            onClick={() => handleMarkPaid(p.id)}
+                            disabled={markingId === p.id}
+                          >
+                            {markingId === p.id ? 'Saving...' : 'Mark Paid'}
+                          </Button>
+                        ) : (
+                          <span className="text-[#94A3B8]/30 text-xs font-semibold">—</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
         )}
       </div>
+
+      {/* Create Payment Modal */}
+      {showCreateModal && (
+        <CreatePaymentModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={fetchPayments}
+        />
+      )}
     </div>
   );
 }

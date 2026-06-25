@@ -143,6 +143,14 @@ async function verifyGoogleProfile(credential) {
     throw new AppError("Google credential token is required", 400);
   }
 
+  if (process.env.ALLOW_DEV_GOOGLE_LOGIN === "true" && credential.startsWith("dev:")) {
+    const email = credential.substring(4);
+    return {
+      email,
+      name: email.split("@")[0]
+    };
+  }
+
   if (!googleClient || !env.googleClientId) {
     throw new AppError("Google Client ID is not configured on the server", 500);
   }

@@ -64,6 +64,7 @@ describe("Google viewer registration", () => {
     mockUsers.clear();
     mockPayloads = {};
     process.env.GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com";
+    process.env.NODE_ENV = "test";
     authController = require("../src/controllers/authController");
   });
 
@@ -117,5 +118,44 @@ describe("Google viewer registration", () => {
 
     expect(result.error.statusCode).toBe(403);
     expect(result.error.message).toBe("This email is reserved for fixed Admin/Staff login");
+  });
+
+  it("creates a viewer account when Google returns a verified email for a new user", async () => {
+    mockPayloads.newViewer = {
+      email: "viewer@example.com",
+      name: "Viewer User",
+      email_verified: true
+    };
+
+    const result = await callHandler(authController.googleLogin, {
+      credential: "newViewer"
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.payload).toMatchObject({
+      success: true,
+      user: {
+        email: "viewer@example.com",
+        role: "VIEWER"
+      }
+    });
+  });
+
+  it("accepts a development fallback credential when local testing is enabled", async () => {
+    process.env.ALLOW_DEV_GOOGLE_LOGIN = "true";
+    authController = require("../src/controllers/authController");
+
+    const result = await callHandler(authController.googleLogin, {
+      credential: "dev:viewer@example.com"
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.payload).toMatchObject({
+      success: true,
+      user: {
+        email: "viewer@example.com",
+        role: "VIEWER"
+      }
+    });
   });
 });

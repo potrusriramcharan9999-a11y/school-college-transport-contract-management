@@ -14,8 +14,16 @@ function failure(res, messageText = "Error", statusCode = 400, error = {}) {
   });
 }
 
+function message(res, messageText = "Done", statusCode = 200) {
+  return res.status(statusCode).json({
+    success: true,
+    message: messageText
+  });
+}
+
 module.exports = {
   success,
-  failure
+  failure,
+  message
 };
 

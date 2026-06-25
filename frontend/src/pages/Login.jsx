@@ -4,20 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
-import { Bus } from 'lucide-react';
-
-const fixedLoginOptions = [
-  {
-    label: 'Admin',
-    email: 'admin@transport-contract.local',
-    password: 'Admin@2026',
-  },
-  {
-    label: 'Staff',
-    email: 'staff@transport-contract.local',
-    password: 'Staff@2026',
-  },
-];
+import { Bus, LogIn } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -31,22 +18,6 @@ export default function Login() {
   useEffect(() => {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
-
-  const signInWithCredentials = async (account) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError('');
-    setSubmitting(true);
-
-    try {
-      await login(account.email, account.password);
-      navigate('/', { replace: true });
-    } catch (err) {
-      setError(err.response?.data?.message || `${account.label} login failed. Please try again.`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,7 +46,7 @@ export default function Login() {
           </div>
           <h1 className="text-xl font-black text-white tracking-tight">Admin & Staff Login</h1>
           <p className="mt-1.5 text-xs text-[#94A3B8] font-bold uppercase tracking-wider">
-            Fixed workspace credentials
+            Transport Contract Management
           </p>
         </div>
 
@@ -86,33 +57,17 @@ export default function Login() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-          {fixedLoginOptions.map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              onClick={() => signInWithCredentials(account)}
-              disabled={submitting}
-              className="min-h-[88px] rounded-2xl border border-white/10 bg-[#0D1220] px-3 py-3 text-left hover:border-[#8B7CFF]/50 hover:bg-white/5 transition-all disabled:opacity-40 cursor-pointer"
-            >
-              <span className="block text-sm font-black text-white">{account.label}</span>
-              <span className="block mt-1 text-[10px] font-bold text-[#A78BFA] break-all">{account.email}</span>
-              <span className="block mt-1 text-[10px] font-semibold text-[#94A3B8]">{account.password}</span>
-            </button>
-          ))}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <Input
             id="email"
             name="transport-login-email"
-            label="Admin / Staff Email"
+            label="Email Address"
             type="email"
             autoComplete="off"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@transport-contract.local"
+            placeholder="Enter your email"
           />
 
           <div>
@@ -136,12 +91,19 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder="Enter your password"
             />
           </div>
 
           <Button type="submit" variant="primary" className="w-full py-2.5 mt-4" disabled={submitting}>
-            {submitting ? 'Signing in...' : 'Sign In'}
+            {submitting ? (
+              'Signing in...'
+            ) : (
+              <>
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </>
+            )}
           </Button>
         </form>
 

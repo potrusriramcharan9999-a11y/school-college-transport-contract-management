@@ -47,9 +47,26 @@ const apiLimiter = rateLimit({
   message: "Too many requests from this IP, please try again later."
 });
 
+const allowedOrigins = env.corsOrigin 
+  ? env.corsOrigin.split(',').map(o => o.trim()) 
+  : ['http://localhost:5173'];
+
 app.use(
   cors({
-    origin: env.corsOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like curl, postman, mobile apps, or local tests)
+      if (!origin) return callback(null, true);
+      
+      const isAllowed = allowedOrigins.includes(origin) || 
+        (env.nodeEnv === "development" && (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")));
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked by CORS: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true
   })
 );
