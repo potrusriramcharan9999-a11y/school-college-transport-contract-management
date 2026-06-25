@@ -58,7 +58,9 @@ app.use(
       if (!origin) return callback(null, true);
       
       const isAllowed = allowedOrigins.includes(origin) || 
-        (env.nodeEnv === "development" && (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")));
+        (env.nodeEnv === "development" && (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:"))) ||
+        origin.endsWith(".vercel.app") ||
+        origin.includes("vercel.app");
       
       if (isAllowed) {
         callback(null, true);
